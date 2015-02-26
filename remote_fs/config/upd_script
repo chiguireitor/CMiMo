@@ -1,0 +1,9 @@
+#!/bin/sh
+id=`cat /config/upd_id`
+
+while true
+do
+    cgminer-api -o | curl -d @- -H id:$id -H tp:basic http://192.168.20.10:8093
+    cgminer-api -o stats | curl -d @- -H id:$id -H tp:stats http://192.168.20.10:8093
+    sleep 10
+done

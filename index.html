@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+  <meta charset="utf-8">
+  <head>
+    <title>S5 Watcher</title>
+    <style>
+    html {
+        margin: 0px;
+        padding: 0px;
+    }
+    
+    body {
+        font-family: Calibri, Tahoma, Ubuntu, Helvetica, Sans;
+        margin: 0px;
+        padding: 0.2em;
+        cursor: default;
+    }
+    
+    h1 {
+        margin: 0px;
+    }
+    
+    .miner {
+        --border: 1px solid #000;
+        border-radius: 5px 5px;
+        background: #FFF;
+        --position: absolute;
+        float: left;
+        margin-right: 5px;
+        padding: 3px;
+        background: -webkit-radial-gradient(center, ellipse cover, #f7f7f7 0%,#f2f2f2 51%,#cccccc 100%); /* Chrome10+,Safari5.1+ */
+        -webkit-box-shadow: 0px 6px 12px -4px rgba(50, 50, 50, 0.45);
+        -webkit-user-select: none;
+    }
+    
+    .name {
+        font-size: 12px;
+    }
+    
+    .temp {
+        font-size: 26px;
+        position: relative;
+        margin: 0 auto;
+    }
+    
+    .hash {
+        font-size: 10pt;
+        position: relative;
+        right: 0px;
+    }
+    </style>
+  </head>
+  <body>
+  <h1>Miners</h1>
+  <canvas id="hashrate" width="640" height="300"></canvas>
+  <div id="info"></div>
+<script src="./handlebars-v3.0.0.js"></script>
+<script src="./jquery-2.1.3.min.js"></script>
+<script src="./Chart.min.js"></script>
+<script id="miner-template" type="text/x-handlebars-template">
+{{#miners}}
+  <div class="miner">
+  <div class="name">{{name}}</div><div class="temp">{{info.stats.temp_avg}}<sup><small>ºC</small></sup></div><div class="hash">{{info.stats.GHS_av}}<small>GH/s</small></div>
+  </div>
+{{/miners}}
+</script>
+<script>
+var minerTemplate = Handlebars.compile($("#miner-template").html())
+var ctx = $("#hashrate")[0].getContext("2d")
+console.log(ctx)
+var chartBase = new Chart(ctx)
+var historic = {}
+
+var dataHashrate = {
+    labels: Array.apply(null, new Array(40)).map(function(x, i){return i * 10 + "s"}),
+    datasets: [
+        /*{
+            label: "My First dataset",
+            fillColor: "rgba(220,220,220,0.2)",
+            strokeColor: "rgba(220,220,220,1)",
+            pointColor: "rgba(220,220,220,1)",
+            pointStrokeColor: "#fff",
+            pointHighlightFill: "#fff",
+            pointHighlightStroke: "rgba(220,220,220,1)",
+            data: [65, 59, 80, 81, 56, 55, 40]
+        },*/
+    ]
+}
+var hchart
+
+function findDataset(datasets, name) {
+    for (var i=0; i < datasets.length; i++) {
+        if (datasets[i].label == name) {
+            return i
+        }
+    }
+    
+    return -1
+}
+
+function updateChart() {
+    dataHashrate.datasets = []
+    for (x in historic) {
+        if (historic.hasOwnProperty(x)) {
+            var miner = historic[x]
+            var colorStr = miner.color[0] + ", " + miner.color[1] + ", " + miner.color[2]
+            
+            var sl = miner.hashrate.slice(-dataHashrate.labels.length)
+            var pad = Array.apply(null, new Array(40 - sl.length)).map(function(){return 0})
+            sl = pad.concat(sl)
+            
+            
+            
+            /*var dataset = findDataset(dataHashrate.datasets, x)
+            if (dataset >= 0) {
+                for (var i=0; i < sl.length; i++) {
+                    if (hchart.datasets[dataset]) {
+                        hchart.datasets[dataset].points[i].value = sl[i]
+                    }
+                }
+            } else {
+                if (hchart) {
+                    hchart.datasets.push({
+                        label: x,
+                        fillColor: "rgba(" + colorStr + ", 0.2)",
+                        strokeColor: "rgba(" + colorStr + ", 0.9)",
+                        pointColor: "rgba(" + colorStr + ", 1.0)",
+                        pointStrokeColor: "#fff",
+                        pointHighlightFill: "#fff",
+                        pointHighlightStroke: "rgba(" + colorStr + ", 1.0)",
+                        data: sl
+                    })
+                } else {*/
+                    dataHashrate.datasets.push({
+                        label: x,
+                        fillColor: "rgba(" + colorStr + ", 0.2)",
+                        strokeColor: "rgba(" + colorStr + ", 0.9)",
+                        pointColor: "rgba(" + colorStr + ", 1.0)",
+                        pointStrokeColor: "#fff",
+                        pointHighlightFill: "#fff",
+                        pointHighlightStroke: "rgba(" + colorStr + ", 1.0)",
+                        data: sl
+                    })
+                /*}
+            }*/
+            
+        }
+    }
+    
+    /*if (hchart) {
+        hchart.update()
+    } else {*/
+    if (hchart) {
+        hchart.clear()
+    }
+    hchart = chartBase.Line(dataHashrate, {animation : false})
+    //}
+}
+
+function randomPastel() {
+    return [
+        Math.floor((Math.random() * 256 + 192)/2),
+        Math.floor((Math.random() * 256 + 192)/2),
+        Math.floor((Math.random() * 256 + 192)/2)
+    ]
+}
+
+require('./server.js').setCallback(function(miners){
+    var elem = $("#info")
+    
+    if (elem) {
+        elem.html(minerTemplate(miners))
+        
+        for (var i=0; i < miners.miners.length; i++) {
+            var minerData = miners.miners[i]
+            var minerHist
+            if (minerData.name in historic) {
+                minerHist = historic[minerData.name]
+            } else {
+                minerHist = {hashrate:[], temp: [], color: randomPastel()}
+                historic[minerData.name] = minerHist
+            }
+            
+            var h = Number.parseFloat(minerData.info.stats.GHS_5s)
+            var t = Number.parseFloat(minerData.info.stats.temp_avg)
+            
+            if (!isNaN(h)) {
+                minerHist.hashrate.push(h)
+                
+                if (minerHist.hashrate.length > 40) {
+                    minerHist.hashrate = minerHist.hashrate.slice(-40)
+                }
+            }
+            
+            if (!isNaN(t)) {
+                minerHist.temp.push(t)
+                
+                if (minerHist.temp.length > 40) {
+                    minerHist.temp = minerHist.temp.slice(-40)
+                }
+            }
+        }
+        
+        updateChart()
+    }
+})
+
+</script>
+  </body>
+</html>

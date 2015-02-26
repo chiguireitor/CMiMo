@@ -1,0 +1,27 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          upd_script
+# Required-Start:    $local_fs mountvirtfs
+# Required-Stop:     $local_fs
+# Default-Start:     S
+# Default-Stop:      0 6
+# Short-Description: Updates miner status to a server
+# Description:       The server is sent an HTTP request with all the data
+### END INIT INFO
+
+case "$1" in
+	start|"")
+		test "$VERBOSE" != no && echo "Initializing update script..."
+		/config/upd_script >/dev/null 2>&1 &
+		;;
+	stop)
+		test "$VERBOSE" != no && echo "Stopping update script..."
+		killall upd_script
+		;;
+	*)
+		echo "Usage: upd_script {start|stop}" >&2
+		exit 1
+		;;
+esac
+
+exit 0

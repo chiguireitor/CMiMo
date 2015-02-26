@@ -1,0 +1,12 @@
+{
+  "name": "S5 Watcher",
+  "description": "Status watcher for S5 antminers.",
+  "version": "1",
+  "main": "index.html",
+  "node-main": "server.js",
+  "window": {
+    "toolbar": false,
+    "width": 660,
+    "height": 500
+  }
+}
